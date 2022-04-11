@@ -71,8 +71,8 @@ func Digest(data ...*big.Int) (*big.Int, error) {
 				// Input cannot be hashed.
 				return zero, ErrInvalid
 			}
-			cp := new(big.Int).Set(x) // Copy because *big.Int.And mutates.
-			if cp.And(cp, big.NewInt(1)).Cmp(big.NewInt(0)) != 0 {
+			copy := new(big.Int).Set(x) // Copy because *big.Int.And mutates.
+			if copy.And(copy, big.NewInt(1)).Cmp(big.NewInt(0)) != 0 {
 				x1, x2 := curve.Add(pt1.x, pt1.y, pt2.x, pt2.y)
 				pt1 = point{x1, x2}
 			}
