@@ -1,10 +1,13 @@
-// Package trie implements a binary trie. See the following¹ for 
-// details. 
-// 
+// Package trie implements a binary trie. See the following¹ for
+// details.
+//
 // ¹ https://docs.starknet.io/docs/State/starknet-state/#example-trie
 package trie
 
-import "errors"
+import (
+	"errors"
+	"fmt"
+)
 
 // Trie represents a binary trie.
 type Trie struct {
@@ -21,7 +24,7 @@ func New() Trie {
 }
 
 func (t *Trie) get(n node, key, d int) (node, error) {
-	if n.isNull() {
+	if n.isEmpty() {
 		return node{}, ErrNotFound
 	}
 
@@ -34,23 +37,30 @@ func (t *Trie) get(n node, key, d int) (node, error) {
 }
 
 func (t *Trie) put(n node, key, val, d int) node {
-	if n.isNull() {
+	if n.isEmpty() {
 		n = newNode()
 	}
 
 	if d == isize-1 {
-		n.bottom = val
-		// XXX: For now the default values are good enough but with the
-		// switch to big.Ints, the encoding has to be explicit here.
-		// TODO: Compute hash.
+		// Commit the value in the trie.
+		n.encoding = encoding{0, 0, val}
+		n.updateHash()
+
+		// DEBUG.
+		fmt.Printf("enc = %v\n\n", n.encoding)
+
 		return n
 	}
 
 	b := bit(key, d)
 	n.next[b] = t.put(n.next[b], key, val, d+1)
 
-	// TODO: Update the encoding of n.
-	// TODO: Compute hash of n.
+	n.encode()
+	n.updateHash()
+
+	// DEBUG.
+	fmt.Printf("enc = %v\n\n", n.encoding)
+
 	return n
 }
 
@@ -66,4 +76,6 @@ func (t *Trie) Get(key int) (int, error) {
 // Put inserts a key-value pair in the trie.
 func (t *Trie) Put(key, val int) {
 	t.root = t.put(t.root, key, val, 0)
+	// TODO: Encode root node.
+	// TODO: Compute the hash of the root node.
 }
