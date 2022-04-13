@@ -10,8 +10,8 @@ import (
 
 // encoding represents the encoding of a node in a binary tree.
 type encoding struct {
-	length, path int
-	bottom       *big.Int
+	length       uint8
+	path, bottom *big.Int
 }
 
 // node represents a node in a binary tree.
@@ -43,8 +43,8 @@ func (n *node) updateHash() {
 		// DEBUG.
 		fmt.Printf("hash = %x\n\n", n.hash)
 	} else {
-		h, _ := pedersen.Digest(n.bottom, big.NewInt(int64(n.path)))
-		n.hash = h.Add(h, big.NewInt(int64(n.length)))
+		h, _ := pedersen.Digest(n.bottom, n.path)
+		n.hash = h.Add(h, new(big.Int).SetUint64(uint64(n.length)))
 
 		// DEBUG.
 		fmt.Printf("hash = %x\n\n", n.hash)
@@ -60,20 +60,21 @@ func (n *node) encode() {
 
 	switch {
 	case left.isEmpty() && right.isEmpty():
-		n.encoding = encoding{0, 0, new(big.Int)}
+		n.encoding = encoding{0, new(big.Int), new(big.Int)}
 	case !left.isEmpty() && right.isEmpty():
 		n.encoding = encoding{
 			left.length + 1, left.path, new(big.Int).Set(left.bottom),
 		}
 	case left.isEmpty() && !right.isEmpty():
+		addend := new(big.Int).SetUint64(uint64(math.Pow(2, float64(right.length))))
 		n.encoding = encoding{
 			right.length + 1,
-			right.path + int(math.Pow(2, float64(right.length))),
+			right.path.Add(right.path, addend),
 			new(big.Int).Set(right.bottom),
 		}
 	default:
 		h, _ := pedersen.Digest(left.hash, right.hash)
-		n.encoding = encoding{0, 0, h}
+		n.encoding = encoding{0, new(big.Int), h}
 	}
 }
 
