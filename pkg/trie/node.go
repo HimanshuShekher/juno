@@ -3,18 +3,21 @@ package trie
 import (
 	"fmt"
 	"math"
+	"math/big"
+
+	"github.com/NethermindEth/juno/pkg/crypto/pedersen"
 )
 
 // encoding represents the encoding of a node in a binary tree.
 type encoding struct {
-	length, path, bottom int
+	length, path int
+	bottom       *big.Int
 }
 
 // node represents a node in a binary tree.
 type node struct {
 	encoding
-	// TODO: Add node hash field.
-	// hash *big.Int
+	hash *big.Int
 	next []node
 }
 
@@ -23,19 +26,28 @@ func newNode() node {
 	return node{next: make([]node, 2)}
 }
 
+// DEBUG.
+// String makes encoding satisfy the Stringer interface.
+func (e *encoding) String() string {
+	return fmt.Sprintf("(%d, %d, %x)", e.length, e.path, e.bottom)
+}
+
 // updateHash updates the node hash according to the directive outlined
 // in the specification¹.
 //
 // ¹ https://docs.starknet.io/docs/State/starknet-state#specifications
 func (n *node) updateHash() {
 	if n.length == 0 {
-		// TODO: Set n.hash = n.bottom.
+		n.hash = new(big.Int).Set(n.bottom)
+
 		// DEBUG.
-		fmt.Printf("hash = %v\n", n.bottom)
+		fmt.Printf("hash = %x\n\n", n.hash)
 	} else {
-		// TODO: Set n.hash = h(n.bottom,n.path) + n.length
+		h, _ := pedersen.Digest(n.bottom, big.NewInt(int64(n.path)))
+		n.hash = h.Add(h, big.NewInt(int64(n.length)))
+
 		// DEBUG.
-		fmt.Printf("hash = h(%v,%v) + %v\n", n.bottom, n.path, n.length)
+		fmt.Printf("hash = %x\n\n", n.hash)
 	}
 }
 
@@ -48,24 +60,24 @@ func (n *node) encode() {
 
 	switch {
 	case left.isEmpty() && right.isEmpty():
-		n.encoding = encoding{0, 0, 0}
+		n.encoding = encoding{0, 0, new(big.Int)}
 	case !left.isEmpty() && right.isEmpty():
-		n.encoding = encoding{left.length + 1, left.path, left.bottom}
+		n.encoding = encoding{
+			left.length + 1, left.path, new(big.Int).Set(left.bottom),
+		}
 	case left.isEmpty() && !right.isEmpty():
 		n.encoding = encoding{
 			right.length + 1,
 			right.path + int(math.Pow(2, float64(right.length))),
-			right.bottom,
+			new(big.Int).Set(right.bottom),
 		}
 	default:
-		// TODO: Placeholder. Encode the bottom field of this node as
-		// h(left.hash, right.hash).
-		n.encoding = encoding{0, 0, 251}
+		h, _ := pedersen.Digest(left.hash, right.hash)
+		n.encoding = encoding{0, 0, h}
 	}
 }
 
-// isEmpty returns true if next is a null link. This corresponds to an
-// empty node in the specification¹.
+// isEmpty returns true if n is an empty node i.e. (0,0,0)¹.
 //
 // ¹ https://docs.starknet.io/docs/State/starknet-state#specifications
 func (n *node) isEmpty() bool {

@@ -7,6 +7,7 @@ package trie
 import (
 	"errors"
 	"fmt"
+	"math/big"
 )
 
 // Trie represents a binary trie.
@@ -36,7 +37,7 @@ func (t *Trie) get(n node, key, d int) (node, error) {
 	return t.get(n.next[b], key, d+1)
 }
 
-func (t *Trie) put(n node, key, val, d int) node {
+func (t *Trie) put(n node, key int, val *big.Int, d int) node {
 	if n.isEmpty() {
 		n = newNode()
 	}
@@ -44,11 +45,11 @@ func (t *Trie) put(n node, key, val, d int) node {
 	if d == isize-1 {
 		// Commit the value in the trie.
 		n.encoding = encoding{0, 0, val}
-		n.updateHash()
 
 		// DEBUG.
-		fmt.Printf("enc = %v\n\n", n.encoding)
+		fmt.Printf("enc = %s\n", n.encoding.String())
 
+		n.updateHash()
 		return n
 	}
 
@@ -56,26 +57,24 @@ func (t *Trie) put(n node, key, val, d int) node {
 	n.next[b] = t.put(n.next[b], key, val, d+1)
 
 	n.encode()
-	n.updateHash()
 
 	// DEBUG.
-	fmt.Printf("enc = %v\n\n", n.encoding)
+	fmt.Printf("enc = %s\n", n.encoding.String())
 
+	n.updateHash()
 	return n
 }
 
 // Get retrieves a value from the trie with the corresponding key.
-func (t *Trie) Get(key int) (int, error) {
+func (t *Trie) Get(key int) (*big.Int, error) {
 	n, err := t.get(t.root, key, 0)
 	if err != nil {
-		return 0, err
+		return new(big.Int), err
 	}
 	return n.bottom, nil
 }
 
 // Put inserts a key-value pair in the trie.
-func (t *Trie) Put(key, val int) {
+func (t *Trie) Put(key int, val *big.Int) {
 	t.root = t.put(t.root, key, val, 0)
-	// TODO: Encode root node.
-	// TODO: Compute the hash of the root node.
 }
